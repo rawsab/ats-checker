@@ -1,0 +1,10 @@
+# category -> canonical skill names. Matching is case-insensitive on word boundaries;
+# aliases live in synonyms.yaml.
+languages: [Python, Java, JavaScript, TypeScript, Go, Rust, C, C++, C#, Kotlin, Swift, Ruby, PHP, Scala, Elixir, Haskell, R, SQL, Bash, Lua, Dart, Objective-C, Clojure, Zig]
+frontend: [React, Next.js, Vue, Angular, Svelte, Redux, HTML, CSS, Tailwind, Webpack, Vite, React Native, Flutter, GraphQL]
+backend: [Node.js, Express, Django, Flask, FastAPI, Spring, Spring Boot, Rails, .NET, ASP.NET, gRPC, REST, Laravel, Phoenix, NestJS, Celery]
+cloud_infra: [AWS, GCP, Azure, Docker, Kubernetes, Terraform, Ansible, Helm, Lambda, EC2, S3, CloudFormation, Serverless, Linux, Nginx, Cloudflare, Pulumi]
+data_stores: [PostgreSQL, MySQL, SQLite, MongoDB, Redis, DynamoDB, Cassandra, Elasticsearch, Kafka, RabbitMQ, BigQuery, Snowflake, Spark, Airflow, ClickHouse, Firestore]
+ml_ai: [PyTorch, TensorFlow, scikit-learn, Pandas, NumPy, LLM, Machine Learning, Deep Learning, NLP, Computer Vision, Hugging Face, RAG, JAX, MLOps]
+tooling: [Git, GitHub Actions, Jenkins, CircleCI, CI/CD, Datadog, Prometheus, Grafana, Sentry, Jira, Bazel, OpenTelemetry, ArgoCD, GitLab CI]
+practices: [Unit Testing, Integration Testing, TDD, Microservices, Distributed Systems, System Design, Agile, Scrum, Code Review, Observability, Performance Optimization, Security, Concurrency, Data Structures, Algorithms, API Design, Event-Driven, Caching]

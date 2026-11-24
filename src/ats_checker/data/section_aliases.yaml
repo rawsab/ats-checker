@@ -1,0 +1,29 @@
+# canonical section -> aliases. "strict" aliases are what a legacy parser accepts;
+# "lenient" adds looser variants a modern parser recognizes.
+experience:
+  strict: [experience, work experience, professional experience, employment history, employment]
+  lenient: [work history, relevant experience, career history, industry experience, technical experience, internships, internship experience]
+education:
+  strict: [education]
+  lenient: [education and training, academic background, academics, education & certifications]
+skills:
+  strict: [skills, technical skills]
+  lenient: [technologies, tech stack, core competencies, tools, languages and technologies, skills & tools, technical proficiencies, toolbox]
+projects:
+  strict: [projects]
+  lenient: [personal projects, side projects, selected projects, technical projects, open source, open source contributions, academic projects]
+summary:
+  strict: [summary, professional summary]
+  lenient: [profile, about, about me, objective, career objective, overview]
+certifications:
+  strict: [certifications]
+  lenient: [certificates, licenses and certifications, licenses & certifications]
+awards:
+  strict: [awards, honors]
+  lenient: [achievements, honors and awards, awards & honors, accomplishments]
+publications:
+  strict: [publications]
+  lenient: [papers, research]
+leadership:
+  strict: [leadership]
+  lenient: [leadership experience, activities, extracurricular activities, volunteering, volunteer experience]
