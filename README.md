@@ -54,6 +54,19 @@ ats trend [RESUME] --by profiles|categories
 ats label RUN "text"  ·  ats rename RESUME "name"  ·  ats export RUN -f md|json
 ```
 
+### Use it from a coding agent (Claude Code, Codex, …)
+
+The repo ships an [`ats-check` agent skill](skills/ats-check/SKILL.md). It teaches an agent to run the checker, read the report and iterate on your resume source in a loop: edit, rebuild the PDF, re-check, compare. It never invents experience and never games the parser.
+
+```bash
+ats skill install                    # Claude Code: ~/.claude/skills/ats-check
+ats skill install --project          # Claude Code, this project only: ./.claude/skills/ats-check
+ats skill install --target codex     # Codex: ~/.codex/skills/ats-check
+ats skill install --target <dir>     # any agent that reads SKILL.md skills
+```
+
+Restart the agent session, then ask something like *"check my resume's ATS parseability and fix the worst issues"*. Agents use `ats check resume.pdf --md`, a compact Markdown report that never prompts for input and includes changes since the previous version.
+
 ### Optional AI bullet review
 
 ```bash

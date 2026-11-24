@@ -471,6 +471,61 @@ def export(
         print(out)
 
 
+skill_app = typer.Typer(help="Install the ats-check agent skill for Claude Code, Codex and other agents.")
+app.add_typer(skill_app, name="skill")
+
+SKILL_NAME = "ats-check"
+SKILL_TARGETS = {
+    "claude": Path("~/.claude/skills"),
+    "codex": Path("~/.codex/skills"),
+}
+
+
+def _skill_source() -> Path:
+    from importlib import resources
+
+    bundled = resources.files("ats_checker").joinpath("_skill", SKILL_NAME)
+    if bundled.is_dir():  # installed from a wheel
+        return Path(str(bundled))
+    repo = Path(__file__).resolve().parents[2] / "skills" / SKILL_NAME  # editable/dev install
+    if repo.is_dir():
+        return repo
+    err.print("[red]Couldn't find the bundled skill files.[/]")
+    raise typer.Exit(1)
+
+
+@skill_app.command("install")
+def skill_install(
+    target: Annotated[str, typer.Option("--target", "-t", help="claude, codex, or a skills directory path.")] = "claude",
+    project: Annotated[bool, typer.Option("--project", help="Install into ./.claude/skills of the current project instead of your home dir (claude only).")] = False,
+    force: Annotated[bool, typer.Option("--force", "-f", help="Overwrite an existing install.")] = False,
+):
+    """Copy the ats-check skill into an agent's skills directory."""
+    import shutil
+
+    if project and target != "claude":
+        raise typer.BadParameter("--project is only supported with --target claude", param_hint="--project")
+    if project:
+        base = Path.cwd() / ".claude" / "skills"
+    else:
+        base = SKILL_TARGETS.get(target, Path(target)).expanduser()
+    dest = base / SKILL_NAME
+    if dest.exists() and not force:
+        err.print(f"[yellow]{dest} already exists. Re-run with --force to overwrite.[/]")
+        raise typer.Exit(1)
+    if dest.exists():
+        shutil.rmtree(dest)
+    base.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(_skill_source(), dest, ignore=shutil.ignore_patterns("__pycache__"))
+    console.print(f"Installed the [bold]{SKILL_NAME}[/] skill to {dest}")
+    console.print("[grey50]Restart your agent session so it picks up the new skill.[/]")
+
+
+@skill_app.command("path")
+def skill_path():
+    """Print where the bundled skill files live (to copy them manually)."""
+    print(_skill_source())
+
 
 if __name__ == "__main__":
     app()

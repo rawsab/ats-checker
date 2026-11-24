@@ -92,3 +92,12 @@ def test_markdown_report_shows_deltas(pdfs):
     assert "vs previous version" in out and "## Changed since previous version" in out
     assert "Single-column layout" in out  # moved from fail to pass
 
+
+def test_skill_install(tmp_path):
+    dest = tmp_path / "skills"
+    result = runner.invoke(app, ["skill", "install", "--target", str(dest)])
+    assert result.exit_code == 0, result.output
+    text = (dest / "ats-check" / "SKILL.md").read_text()
+    assert text.startswith("---\nname: ats-check\n")
+    assert runner.invoke(app, ["skill", "install", "--target", str(dest)]).exit_code == 1  # exists
+    assert runner.invoke(app, ["skill", "install", "--target", str(dest), "--force"]).exit_code == 0
