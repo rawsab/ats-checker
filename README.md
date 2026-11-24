@@ -43,6 +43,8 @@ ats check resume.pdf --no-jd --label "post-rewrite"
 ats check resume.pdf --show-text legacy    # see exactly what the Legacy Parser read
 ats check resume.pdf --json --no-save      # machine-readable, nothing saved
 
+ats check resume.pdf --md                  # compact Markdown report (for agents/scripts)
+
 ats history                 # past runs
 ats versions [RESUME]       # a resume's versions, ordered by PDF creation date
 ats resumes                 # tracked resumes, version counts, sparkline trends

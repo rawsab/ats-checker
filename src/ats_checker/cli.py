@@ -120,6 +120,7 @@ def check(
     profile: Annotated[list[str] | None, typer.Option("--profile", "-p", help=f"Only run these ATS profiles: {', '.join(PROFILE_KEYS)}.")] = None,
     show_text: Annotated[str | None, typer.Option("--show-text", help="Print the raw text a profile saw.")] = None,
     as_json: Annotated[bool, typer.Option("--json", help="Print the full report as JSON (no prompts).")] = False,
+    as_md: Annotated[bool, typer.Option("--md", help="Print a compact Markdown report (no prompts); made for coding agents.")] = False,
     no_save: Annotated[bool, typer.Option("--no-save", help="Don't record this run in history.")] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show passing checks and more evidence.")] = False,
 ):
@@ -128,7 +129,7 @@ def check(
     from .extract.engines import NotAPdfError
     from .jd import load_jd
 
-    interactive = _interactive() and not as_json
+    interactive = _interactive() and not (as_json or as_md)
     if profile:
         bad = [p for p in profile if p not in PROFILE_KEYS]
         if bad:
@@ -178,6 +179,15 @@ def check(
 
     if as_json:
         print(json.dumps(report, indent=2, default=str))
+        return
+    if as_md:
+        from .report.markdown import to_markdown
+
+        print(to_markdown(report, prev=prev, version=version))
+        if show_text:
+            p = next((p for p in report["profiles"] if p["key"] == show_text), None)
+            if p:
+                print(f"\n## Raw text seen by the {p['name']}\n\n```\n{p['text_seen']}\n```")
         return
     render(report, console, prev=prev, version=version, verbose=verbose)
     if show_text:
@@ -453,7 +463,7 @@ def export(
     if not report:
         err.print("[red]Run not found.[/]")
         raise typer.Exit(1)
-    out = json.dumps(report, indent=2) if fmt == "json" else to_markdown(report)
+    out = json.dumps(report, indent=2) if fmt == "json" else to_markdown(report, version=report.get("run"))
     if output:
         output.write_text(out, encoding="utf-8")
         console.print(f"Wrote {output}")

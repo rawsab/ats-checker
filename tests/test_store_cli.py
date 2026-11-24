@@ -82,3 +82,13 @@ def test_versions_ordered_by_pdf_creation_date(pdfs, tmp_path):
     assert store.previous_version_run(series[0]["document_id"], None) is None
     assert runner.invoke(app, ["versions"]).exit_code == 0
 
+
+def test_markdown_report_shows_deltas(pdfs):
+    runner.invoke(app, ["check", str(pdfs["two_column.pdf"]), "--md", "--no-jd"])
+    result = runner.invoke(app, ["check", str(pdfs["Jane_Doe_Resume.pdf"]), "--md", "--no-jd"])
+    assert result.exit_code == 0, result.output
+    out = result.stdout
+    assert out.startswith("# ATS report: Jane_Doe_Resume.pdf")
+    assert "vs previous version" in out and "## Changed since previous version" in out
+    assert "Single-column layout" in out  # moved from fail to pass
+
