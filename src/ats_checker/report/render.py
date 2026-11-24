@@ -67,7 +67,7 @@ def _profiles(report: dict, prev: dict | None) -> Panel:
     tbl.add_column("bar", width=24, no_wrap=True)
     tbl.add_column("score", justify="right", width=4)
     tbl.add_column("Δ", width=6)
-    tbl.add_column("note", ratio=1, style="grey62", overflow="fold")
+    tbl.add_column("note", ratio=1, style="grey62", overflow="ellipsis", no_wrap=True)
     checks_by_id = {}
     for p in report["profiles"]:
         checks_by_id.update({c["id"]: c for c in p["checks"]})
