@@ -16,6 +16,7 @@ import io
 import logging
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pdfplumber
@@ -80,6 +81,11 @@ class PdfDocument:
     @property
     def char_count(self) -> int:
         return sum(p.char_count for p in self.pages)
+
+    @property
+    def created_iso(self) -> str | None:
+        """When the PDF was made (CreationDate, else ModDate), as UTC ISO-8601."""
+        return pdf_date(self.metadata.get("CreationDate")) or pdf_date(self.metadata.get("ModDate"))
 
 
 class NotAPdfError(ValueError):
@@ -246,6 +252,27 @@ def load_pdf(path: Path) -> PdfDocument:
         "pypdf": pypdf_text,
     }
     return doc
+
+
+_PDF_DATE = re.compile(r"D?:?(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?\s*([Zz+\-])?(\d{2})?'?(\d{2})?")
+
+
+def pdf_date(raw: str | None) -> str | None:
+    """Parse a PDF date string ("D:20261123233911-05'00'") into UTC ISO-8601."""
+    if not raw:
+        return None
+    m = _PDF_DATE.match(str(raw).strip())
+    if not m:
+        return None
+    y, mo, d, h, mi, s, sign, oh, om = m.groups()
+    try:
+        dt = datetime(int(y), int(mo or 1), int(d or 1), int(h or 0), int(mi or 0), int(s or 0))
+    except ValueError:
+        return None
+    offset = timedelta(0)
+    if sign in ("+", "-") and oh:
+        offset = timedelta(hours=int(oh), minutes=int(om or 0)) * (1 if sign == "+" else -1)
+    return dt.replace(tzinfo=timezone(offset)).astimezone(UTC).isoformat(timespec="seconds")
 
 
 def _clean_uuid(value: str | None) -> str | None:

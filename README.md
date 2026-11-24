@@ -31,6 +31,8 @@ Some failures are knockouts that cap a profile's score: a two-column layout for 
 2. The same PDF XMP DocumentID counts as a re-export of the same source.
 3. Similar text plus the same contact details count as a new version of the same resume. If the match is ambiguous, you're asked.
 
+Versions are ordered by the PDF's creation date (falling back to when you first checked it), so checking an old export later still slots it in as an earlier version.
+
 ## Usage
 
 ```bash
@@ -42,6 +44,7 @@ ats check resume.pdf --show-text legacy    # see exactly what the Legacy Parser 
 ats check resume.pdf --json --no-save      # machine-readable, nothing saved
 
 ats history                 # past runs
+ats versions [RESUME]       # a resume's versions, ordered by PDF creation date
 ats resumes                 # tracked resumes, version counts, sparkline trends
 ats show [RUN]              # re-render a saved report
 ats compare [A] [B]         # diff two runs (default: latest vs previous version)

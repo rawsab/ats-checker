@@ -91,3 +91,17 @@ Nice to have
     pref = {s.name for s in jd.preferred}
     assert {"Python", "Go", "Distributed Systems"} <= req
     assert "Terraform" in pref and "Kafka" in pref
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("D:20261123233911-00'00'", "2026-11-23T23:39:11+00:00"),
+    ("D:20261122010724Z", "2026-11-22T01:07:24+00:00"),
+    ("D:20261123190054-05'00'", "2026-11-24T00:00:54+00:00"),
+    ("D:2024", "2024-01-01T00:00:00+00:00"),
+    ("garbage", None),
+    (None, None),
+])
+def test_pdf_date(raw, expected):
+    from ats_checker.extract.engines import pdf_date
+
+    assert pdf_date(raw) == expected

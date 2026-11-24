@@ -14,6 +14,8 @@ from pathlib import Path
 
 from platformdirs import user_data_dir
 
+from ..extract.engines import pdf_date
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS lineages (
     id INTEGER PRIMARY KEY,
@@ -35,7 +37,8 @@ CREATE TABLE IF NOT EXISTS documents (
     contact_key TEXT,
     text TEXT NOT NULL,
     label TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    doc_date TEXT  -- PDF CreationDate (or ModDate) as UTC ISO; orders versions
 );
 CREATE TABLE IF NOT EXISTS jds (
     id INTEGER PRIMARY KEY,
@@ -63,6 +66,16 @@ def data_dir() -> Path:
     return Path(os.environ.get("ATS_CHECKER_HOME") or user_data_dir("ats-checker"))
 
 
+# Versions are ordered by when the PDF was made, falling back to when we first saw it,
+# so checking an old export after a newer one still slots it in as the earlier version.
+def _order(alias: str) -> str:
+    return f"(COALESCE({alias}.doc_date, {alias}.created_at), {alias}.id)"
+
+
+_VERSION = (f"(SELECT COUNT(*) FROM documents d2 WHERE d2.lineage_id = d.lineage_id "
+            f"AND {_order('d2')} <= {_order('d')}) AS version")
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -74,6 +87,16 @@ class Store:
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self):
+        cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(documents)")}
+        if "doc_date" not in cols:
+            self.conn.execute("ALTER TABLE documents ADD COLUMN doc_date TEXT")
+            for row in self.conn.execute("SELECT id, pdf_created FROM documents").fetchall():
+                self.conn.execute("UPDATE documents SET doc_date = ? WHERE id = ?",
+                                  (pdf_date(row["pdf_created"]), row["id"]))
+            self.conn.commit()
 
     def close(self):
         self.conn.close()
@@ -98,10 +121,11 @@ class Store:
     def add_document(self, lineage_id: int, doc, text: str, contact_key: str | None, label: str | None) -> int:
         cur = self.conn.execute(
             "INSERT INTO documents (lineage_id, sha256, filename, path, size_bytes, pages, xmp_document_id, "
-            "pdf_created, pdf_producer, contact_key, text, label, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "pdf_created, pdf_producer, contact_key, text, label, created_at, doc_date) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (lineage_id, doc.sha256, doc.filename, str(doc.path), doc.size_bytes, doc.page_count,
              doc.xmp_document_id, doc.metadata.get("CreationDate"), doc.metadata.get("Producer"),
-             contact_key, text, label, _now()),
+             contact_key, text, label, _now(), doc.created_iso),
         )
         self.conn.commit()
         return cur.lastrowid
@@ -114,12 +138,11 @@ class Store:
 
     def version_info(self, document_id: int) -> dict:
         row = self.conn.execute(
-            "SELECT d.lineage_id, l.name, d.label, "
-            "(SELECT COUNT(*) FROM documents d2 WHERE d2.lineage_id = d.lineage_id AND d2.id <= d.id) AS version "
+            f"SELECT d.lineage_id, l.name, d.label, d.doc_date, {_VERSION} "
             "FROM documents d JOIN lineages l ON l.id = d.lineage_id WHERE d.id = ?", (document_id,)
         ).fetchone()
         return {"lineage_id": row["lineage_id"], "lineage_name": row["name"], "version": row["version"],
-                "label": row["label"]}
+                "label": row["label"], "doc_date": row["doc_date"]}
 
     def lineages(self) -> list[sqlite3.Row]:
         return self.conn.execute(
@@ -161,8 +184,8 @@ class Store:
         return cur.rowcount > 0
 
     _RUN_COLS = ("SELECT r.id, r.document_id, r.jd_id, r.created_at, r.overall, COALESCE(r.label, d.label) AS label, "
-                 "d.filename, d.lineage_id, l.name AS lineage_name, j.title AS jd_title, "
-                 "(SELECT COUNT(*) FROM documents d2 WHERE d2.lineage_id = d.lineage_id AND d2.id <= d.id) AS version "
+                 "d.filename, d.lineage_id, d.doc_date, l.name AS lineage_name, j.title AS jd_title, "
+                 f"{_VERSION} "
                  "FROM runs r JOIN documents d ON d.id = r.document_id JOIN lineages l ON l.id = d.lineage_id "
                  "LEFT JOIN jds j ON j.id = r.jd_id ")
 
@@ -182,8 +205,9 @@ class Store:
         """Latest run of the version before this one in the same lineage (same JD preferred)."""
         rows = self.conn.execute(
             self._RUN_COLS.replace("SELECT ", "SELECT r.report, ", 1)
-            + "WHERE d.lineage_id = (SELECT lineage_id FROM documents WHERE id = ?) AND d.id < ? "
-            "ORDER BY d.id DESC, (r.jd_id IS ?) DESC, r.id DESC LIMIT 1",
+            + "WHERE d.lineage_id = (SELECT lineage_id FROM documents WHERE id = ?) "
+            f"AND {_order('d')} < (SELECT COALESCE(doc_date, created_at), id FROM documents WHERE id = ?) "
+            "ORDER BY COALESCE(d.doc_date, d.created_at) DESC, d.id DESC, (r.jd_id IS ?) DESC, r.id DESC LIMIT 1",
             (document_id, document_id, jd_id),
         ).fetchall()
         return rows[0] if rows else None
@@ -194,7 +218,7 @@ class Store:
             self._RUN_COLS.replace("SELECT ", "SELECT r.report, ", 1)
             + "WHERE r.id IN (SELECT (SELECT r2.id FROM runs r2 WHERE r2.document_id = d3.id "
             "  ORDER BY (r2.jd_id IS ?) DESC, r2.id DESC LIMIT 1) FROM documents d3 WHERE d3.lineage_id = ?) "
-            "ORDER BY d.id",
+            "ORDER BY COALESCE(d.doc_date, d.created_at), d.id",
             (jd_id, lineage_id),
         ).fetchall()
 

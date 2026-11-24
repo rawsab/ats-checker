@@ -29,8 +29,10 @@ def _header(report: dict, version: dict | None) -> Panel:
         if status:
             t.append(f"  ({status}", style="grey62")
             if version.get("similarity") is not None and version.get("status") == "new_version":
-                t.append(f", {version['similarity']:.0%} similar to v{version['version'] - 1}", style="grey62")
+                t.append(f", {version['similarity']:.0%} similar to an existing version", style="grey62")
             t.append(")", style="grey62")
+        if version.get("doc_date"):
+            t.append(f"  ·  PDF created {version['doc_date'][:10]}", style="grey62")
     jd = report.get("jd")
     t.append("\n")
     if jd:

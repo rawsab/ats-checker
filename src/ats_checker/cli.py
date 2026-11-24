@@ -239,6 +239,36 @@ def resumes():
 
 
 @app.command()
+def versions(resume: Annotated[int | None, typer.Argument(help="Resume (lineage) id; default: most recent.")] = None):
+    """List a resume's versions, ordered by PDF creation date."""
+    store = _store()
+    if resume is None:
+        latest = store.runs(limit=1)
+        if not latest:
+            err.print("[red]No runs yet.[/]")
+            raise typer.Exit(1)
+        resume = latest[0]["lineage_id"]
+    rows = store.lineage_series(resume)
+    if not rows:
+        err.print(f"[red]No versions for resume #{resume}.[/]")
+        raise typer.Exit(1)
+    console.print(Text(f"{rows[0]['lineage_name']}: {len(rows)} version(s), oldest first", style="bold magenta"))
+    tbl = Table(box=box.SIMPLE_HEAD, header_style="grey62")
+    for col in ("Ver", "PDF created", "File", "Score", "Run", "Label"):
+        tbl.add_column(col, justify="right" if col in ("Ver", "Score", "Run") else "left", no_wrap=col != "File")
+    prev = None
+    for r in rows:
+        score = Text(f"{r['overall']:.0f} ", style=color(r["overall"]))
+        score.append_text(delta(r["overall"], prev))
+        tbl.add_row(f"v{r['version']}", _when(r["doc_date"]) if r["doc_date"] else "[grey50]unknown[/]",
+                    r["filename"], score, f"#{r['id']}", r["label"] or "")
+        prev = r["overall"]
+    console.print(tbl)
+    if any(not r["doc_date"] for r in rows):
+        console.print("[grey50]Versions without a PDF creation date are placed by when they were first checked.[/]")
+
+
+@app.command()
 def show(
     run_id: Annotated[int | None, typer.Argument(help="Run id (default: latest).")] = None,
     verbose: Annotated[bool, typer.Option("--verbose", "-v")] = False,
@@ -384,7 +414,8 @@ def trend(
     meta.add_column(style="grey62")
     meta.add_column()
     for r, lab in zip(rows, labels):
-        meta.add_row(lab, f"{r['filename']}  [grey50]run #{r['id']} · {_when(r['created_at'])}"
+        made = f"PDF created {_when(r['doc_date'])} · " if r["doc_date"] else ""
+        meta.add_row(lab, f"{r['filename']}  [grey50]{made}run #{r['id']}"
                           f"{' · ' + r['label'] if r['label'] else ''}[/]")
     console.print(tbl)
     console.print(meta)
@@ -428,6 +459,7 @@ def export(
         console.print(f"Wrote {output}")
     else:
         print(out)
+
 
 
 if __name__ == "__main__":

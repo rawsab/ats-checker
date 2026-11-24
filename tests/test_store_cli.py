@@ -54,3 +54,31 @@ def test_jd_file_option(pdfs, tmp_path):
     jd.write_text("Backend Engineer\nRequirements:\n- Go\n- Kubernetes\n- Haskell\n")
     report = check(pdfs["Jane_Doe_Resume.pdf"], "--jd", str(jd), "--no-save")
     assert set(report["jd"]["required"]) == {"Go", "Kubernetes", "Haskell"}
+
+
+def test_versions_ordered_by_pdf_creation_date(pdfs, tmp_path):
+    from pypdf import PdfReader, PdfWriter
+
+    def with_date(src, name, date):
+        w = PdfWriter(clone_from=PdfReader(src))
+        w.add_metadata({"/CreationDate": date, "/ModDate": date})
+        out = tmp_path / name
+        w.write(out)
+        return out
+
+    newer = with_date(pdfs["Jane_Doe_Resume_edited.pdf"], "new.pdf", "D:20260301120000Z")
+    older = with_date(pdfs["Jane_Doe_Resume.pdf"], "old.pdf", "D:20250101120000-05'00'")
+    first = check(newer)                     # checked first, but made later
+    second = check(older)
+    assert second["run"]["status"] == "new_version"
+    assert second["run"]["version"] == 1     # older PDF slots in before
+    store = Store()
+    series = store.lineage_series(first["run"]["lineage_id"])
+    assert [r["filename"] for r in series] == ["old.pdf", "new.pdf"]
+    assert [r["version"] for r in series] == [1, 2]
+    assert series[0]["doc_date"] == "2025-01-01T17:00:00+00:00"
+    prev = store.previous_version_run(series[1]["document_id"], None)
+    assert prev["filename"] == "old.pdf"
+    assert store.previous_version_run(series[0]["document_id"], None) is None
+    assert runner.invoke(app, ["versions"]).exit_code == 0
+
