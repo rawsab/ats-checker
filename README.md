@@ -7,6 +7,16 @@ uv tool install .          # installs the `ats` command
 ats                        # then drag your resume PDF into the terminal
 ```
 
+![ats check report: overall score, simulated ATS profiles, categories, skills, JD match and fixes](docs/screenshots/check.png)
+
+Track a resume across versions. Here, four exports of the same `Jane_Doe_Resume.pdf` are recognized as versions of one resume and ordered by PDF creation date:
+
+![ats trend: score chart across four resume versions](docs/screenshots/trend.png)
+
+![ats versions: versions ordered by PDF creation date with score changes](docs/screenshots/versions.png)
+
+<sub>Screenshots use the synthetic "Jane Doe" test resumes from `tests/fixtures/`.</sub>
+
 ## What it does
 
 **Three PDF engines.** The resume is extracted with pdfplumber (row-by-row), pdfminer (layout boxes) and pypdf (content-stream order). When the three disagree, different ATSs will see different resumes.
