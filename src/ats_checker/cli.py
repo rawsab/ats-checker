@@ -16,7 +16,7 @@ from rich.table import Table
 from rich.text import Text
 
 from .input import normalize_path
-from .report.charts import color, delta, line_chart, sparkline
+from .report.charts import color, delta, line_chart, series_key, sparkline
 from .report.render import render, render_profile_text
 
 app = typer.Typer(add_completion=False, no_args_is_help=False, rich_markup_mode="rich",
@@ -418,8 +418,8 @@ def trend(
     tbl.add_column("Trend")
     for lab in labels:
         tbl.add_column(lab, justify="right")
-    for name, vals in series.items():
-        tbl.add_row(name, sparkline(vals), *[Text(f"{v:.0f}", style=color(v)) for v in vals])
+    for i, (name, vals) in enumerate(series.items()):
+        tbl.add_row(series_key(name, i), sparkline(vals), *[Text(f"{v:.0f}", style=color(v)) for v in vals])
     meta = Table(box=box.SIMPLE, show_header=False)
     meta.add_column(style="grey62")
     meta.add_column()

@@ -56,6 +56,23 @@ def delta(cur: float, prev: float | None) -> Text:
     return Text(f"{'▲' if d > 0 else '▼'}{abs(d):4.1f}", style="green" if d > 0 else "red")
 
 
+# Fixed series colors shared by the chart lines and the table key under it (plotext's own
+# legend is drawn on top of the plot and hides data, so we don't use it).
+SERIES_COLORS = [(171, 130, 255), (255, 99, 132), (54, 162, 235), (255, 159, 64), (75, 192, 192),
+                 (201, 203, 207), (255, 205, 86), (46, 204, 113), (240, 98, 146)]
+
+
+def series_color(i: int) -> tuple[int, int, int]:
+    return SERIES_COLORS[i % len(SERIES_COLORS)]
+
+
+def series_key(name: str, i: int) -> Text:
+    r, g, b = series_color(i)
+    t = Text("━━ ", style=f"bold rgb({r},{g},{b})")
+    t.append(name)
+    return t
+
+
 def line_chart(series: dict[str, list[float]], labels: list[str], *, title: str, width: int, height: int = 18) -> Text:
     import plotext as plt
 
@@ -63,8 +80,11 @@ def line_chart(series: dict[str, list[float]], labels: list[str], *, title: str,
     plt.plotsize(width, height)
     plt.theme("pro")
     xs = list(range(1, len(labels) + 1))
-    for i, (name, ys) in enumerate(series.items()):
-        plt.plot(xs, ys, label=name, marker="hd" if i == 0 else "braille")
+    # "hd" draws with quadrant blocks (2x2 per cell), which far more terminal/monospace fonts
+    # cover than braille, so lines stay aligned.
+    # draw in reverse so the first series (Overall) is painted last, on top
+    for i, ys in reversed(list(enumerate(series.values()))):
+        plt.plot(xs, ys, marker="hd", color=series_color(i))
     plt.xticks(xs, labels)
     lowest = min((v for ys in series.values() for v in ys), default=0)
     plt.ylim(max(0, (lowest // 10) * 10 - 10), 100)
